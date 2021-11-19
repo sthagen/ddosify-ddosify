@@ -44,19 +44,27 @@ docker run -it --rm ddosify/ddosify
 brew install ddosify/tap/ddosify
 ```
 
-### apk, deb, rpm packages
+### apk, deb, rpm, Arch Linux packages
+
+- For arm architectures change `ddosify_amd64` to `ddosify_arm64` or `ddosify_armv6`.
+- Superuser privilege is required.
 
 ```bash
 # For Redhat based (Fedora, CentOS, RHEL, etc.)
-rpm -i https://github.com/ddosify/ddosify/releases/download/v0.1.1/ddosify_amd64.rpm
+rpm -i https://github.com/ddosify/ddosify/releases/latest/download/ddosify_amd64.rpm
 
 # For Debian based (Ubuntu, Linux Mint, etc.)
-wget https://github.com/ddosify/ddosify/releases/download/v0.1.1/ddosify_amd64.deb
+wget https://github.com/ddosify/ddosify/releases/latest/download/ddosify_amd64.deb
 dpkg -i ddosify_amd64.deb
 
 # For Alpine
-wget https://github.com/ddosify/ddosify/releases/download/v0.1.1/ddosify_amd64.apk
+wget https://github.com/ddosify/ddosify/releases/latest/download/ddosify_amd64.apk
 apk add --allow-untrusted ddosify_amd64.apk
+
+# For Arch Linux
+git clone https://aur.archlinux.org/ddosify.git
+cd ddosify
+makepkg -sri
 ```
 
 ### Using the convenience script (macOS and Linux)
@@ -168,6 +176,7 @@ Config file lets you use all capabilities of Ddosify.
 
 The features you can use by config file;
 - Scenario creation
+- Custom load type creation
 - Payload from a file
 - Extra connection configuration, like *keep-alive* enable/disable logic
 - HTTP2 support
@@ -190,6 +199,18 @@ There is an example config file at [config_examples/config.json](/config_example
 - `duration` *optional*
 
     This is the equivalent of the `-d` flag.
+
+- `manual_load` *optional*
+
+    If you are looking for creating your own custom load type, you can use this feature. The example below says that Ddosify will run the scenario 5 times, 10 times, and 20 times, respectively along with the provided durations. `request_count` and `duration` will be auto-filled by Ddosify according to `manual_load` configuration. In this example, `request_count` will be 35 and the `duration` will be 18 seconds.
+    Also `manual_load` overrides `load_type` if you provide both of them. As a result, you don't need to provide these 3 parameters when using `manual_load`.
+    ```json
+    "manual_load": [
+        {"duration": 5, "count": 5},
+        {"duration": 6, "count": 10},
+        {"duration": 7, "count": 20}
+    ]
+    ```
 
 - `proxy` *optional*
 

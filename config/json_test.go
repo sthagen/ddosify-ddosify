@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -78,10 +79,12 @@ func TestCreateHammer(t *testing.T) {
 			Scenario: []types.ScenarioItem{
 				{
 					ID:       1,
+					Name:     "Example Name 1",
 					URL:      "https://app.servdown.com/accounts/login/?next=/",
 					Protocol: types.ProtocolHTTPS,
 					Method:   http.MethodGet,
 					Timeout:  3,
+					Sleep:    "1000",
 					Payload:  "payload str",
 					Custom: map[string]interface{}{
 						"keep-alive": true,
@@ -89,10 +92,12 @@ func TestCreateHammer(t *testing.T) {
 				},
 				{
 					ID:       2,
+					Name:     "Example Name 2",
 					URL:      "http://test.com",
 					Protocol: types.ProtocolHTTP,
 					Method:   http.MethodPut,
 					Timeout:  2,
+					Sleep:    "300-500",
 					Headers: map[string]string{
 						"ContenType":    "application/xml",
 						"X-ddosify-key": "ajkndalnasd",
@@ -205,6 +210,34 @@ func TestCreateHammerPayload(t *testing.T) {
 
 	if steps[1].Payload != expectedPayloads[1] {
 		t.Errorf("Expected: %v, Found: %v", expectedPayloads[1], steps[1].Payload)
+	}
+}
+
+func TestCreateHammerMultipartPayload(t *testing.T) {
+	t.Parallel()
+	jsonReader, _ := NewConfigReader(readConfigFile("config_testdata/config_multipart_payload.json"), ConfigTypeJson)
+
+	h, err := jsonReader.CreateHammer()
+	if err != nil {
+		t.Errorf("TestCreateHammerMultipartPayload error occurred: %v", err)
+	}
+	steps := h.Scenario.Scenario
+
+	// Content-Type Header Check
+	val, ok := steps[0].Headers["Content-Type"]
+	if !ok {
+		t.Error("Content-Type header should be exist")
+	}
+
+	rgx := "multipart/form-data; boundary=.*"
+	r, _ := regexp.Compile(rgx)
+	if !r.MatchString(val) {
+		t.Errorf("Expected: %v, Found: %v", rgx, val)
+	}
+
+	// Payload Check - Ensure that payload contains 4 form field.
+	if c := strings.Count(steps[0].Payload, "Content-Disposition: form-data;"); c != 4 {
+		t.Errorf("Expected: %v, Found: %v", 4, c)
 	}
 }
 

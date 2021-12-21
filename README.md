@@ -100,10 +100,15 @@ This section aims to show you how to use Ddosify without deep dive into its deta
 
     Ddosify sends a total of *1000* *PUT* requests to *https://target_site.com* over proxy *http://proxy_server.com:80* in *20* seconds with a timeout of *7* seconds per request.
 
-3. ### Scenario based load test
+3. ### Usage for CI/CD pipelines (JSON output)
+
+    	ddosify -t target_site.com -o stdout-json | jq .avg_duration
+
+    Ddosify outputs the result in JSON format. Then `jq` (or any other command-line JSON processor) fetches the `avg_duration`. The rest depends on your CI/CD flow logic. 
+
+4. ### Scenario based load test
 
 		ddosify -config config_examples/config.json
-    
     Ddosify first sends *HTTP/2 POST* request to *https://test_site1.com/endpoint_1* using basic auth credentials *test_user:12345* over proxy *http://proxy_host.com:proxy_port*  and with a timeout of *3* seconds. Once the response is received, HTTPS GET request will be sent to *https://test_site1.com/endpoint_2* along with the payload included in *config_examples/payload.txt* file with a timeout of 2 seconds. This flow will be repeated *20* times in *5* seconds and response will be written to *stdout*.
 
 		
@@ -128,7 +133,7 @@ ddosify [FLAG]
 | `-h`   | Headers of the request. You can provide multiple headers with multiple `-h` flag.  | `string`| -    | No         |
 | `-T`   | Timeout of the request in seconds.                       | `int`    | `5`    | No         |
 | `-P`   | Proxy address as host:port. `-P http://user:pass@proxy_host.com:port'` | `string`    | -    | No |
-| `-o`   | Test result output destination. Other output types will be added. | `string`    | `stdout`    | No |
+| `-o`   | Test result output destination. Supported outputs are [*stdout, stdout-json*] Other output types will be added. | `string`    | `stdout`    | No |
 | `-l`   | [Type](#load-types) of the load test. Ddosify supports 3 load types. | `string`    | `linear`    | No |
 | `-config`   | [Config File](#config-file) of the load test. | `string`    | -    | No |
 | `-version `   | Prints version, git commit, built date (utc), go information and quit | -    | -    | No |
@@ -178,6 +183,7 @@ The features you can use by config file;
 - Scenario creation
 - Custom load type creation
 - Payload from a file
+- Multipart/form-data payload
 - Extra connection configuration, like *keep-alive* enable/disable logic
 - HTTP2 support
 
@@ -232,6 +238,10 @@ There is an example config file at [config_examples/config.json](/config_example
     - `url` *mandatory*
 
         This is the equivalent of the `-t` flag.
+
+    - `name` *optional* <a name="#step-name"></a>
+    
+        Name of the step.
     
     - `protocol` *optional*
 
@@ -252,6 +262,106 @@ There is an example config file at [config_examples/config.json](/config_example
     - `payload_file` *optional*
 
         If you need a long payload, we suggest using this parameter instead of `payload`.  
+
+    - `payload_multipart` *optional* <a name="#payload_multipart"></a>
+
+        Use this for `multipart/form-data` Content-Type.
+
+        Accepts list of `form-field` objects, structured as below;
+        ```json
+        {
+            "name": [field-name],
+            "value": [field-value|file-path|url],
+            "type": <text|file>,    // Default "text"
+            "src": <local|remote>   // Default "local"
+        }
+        ```
+
+        **Example:** Sending form name-value pairs;
+        ```json
+        "payload_multipart": [
+            {
+                "name": "[field-name]",
+                "value": "[field-value]"
+            }
+        ]
+        ```
+
+        **Example:** Sending form name-value pairs and a local file;
+        ```json
+        "payload_multipart": [
+            {
+                "name": "[field-name]",
+                "value": "[field-value]",
+            },
+            {
+                "name": "[field-name]",
+                "value": "./test.png",
+                "type": "file"
+            }
+        ]
+        ```
+
+        **Example:** Sending form name-value pairs and a local file and a remote file;
+        ```json
+        "payload_multipart": [
+            {
+                "name": "[field-name]",
+                "value": "[field-value]",
+            },
+            {
+                "name": "[field-name]",
+                "value": "./test.png",
+                "type": "file"
+            },
+            {
+                "name": "[field-name]",
+                "value": "http://test.com/test.png",
+                "type": "file",
+                "src": "remote"
+            }
+        ]
+        ```
+
+        *Note:* Ddosify adds `Content-Type: multipart/form-data; boundary=[generated-boundary-value]` header to the request when using `payload_multipart`.
+
+    - `timeout` *optional*
+
+        This is the equivalent of the `-T` flag. 
+
+    - `sleep` *optional* <a name="#sleep"></a>
+
+        Sleep duration(ms) before executing the next step. Can be an exact duration or a range.
+
+        **Example:** Sleep 1000ms after step-1;
+        ```json
+        "steps": [
+            {
+                "id": 1,
+                "url": "target.com/endpoint1",
+                "sleep": "1000"
+            },
+            {
+                "id": 2,
+                "url": "target.com/endpoint2",
+            }
+        ]
+        ```
+
+        **Example:** Sleep between 300ms-500ms after step-1;
+        ```json
+        "steps": [
+            {
+                "id": 1,
+                "url": "target.com/endpoint1",
+                "sleep": "300-500"
+            },
+            {
+                "id": 2,
+                "url": "target.com/endpoint2",
+            }
+        ]
+        ```
 
     - `auth` *optional*
         

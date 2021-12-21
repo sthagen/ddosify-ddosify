@@ -23,6 +23,8 @@ package types
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"go.ddosify.com/ddosify/core/util"
 )
@@ -35,6 +37,9 @@ const (
 
 	// Constants of the Auth types
 	AuthHttpBasic = "basic"
+
+	// Max sleep in ms (90s)
+	maxSleep = 90000
 )
 
 // SupportedProtocols should be updated whenever a new requester.Requester interface implemented
@@ -78,6 +83,9 @@ type ScenarioItem struct {
 	// ID of the Item. Should be given by the client.
 	ID int16
 
+	// Name of the Item.
+	Name string
+
 	// Protocol of the requests.
 	Protocol string
 
@@ -98,6 +106,9 @@ type ScenarioItem struct {
 
 	// Connection timeout duration of the request in seconds
 	Timeout int
+
+	// Sleep duration after running the step. Can be a time range like "300-500" or an exact duration like "350" in ms
+	Sleep string
 
 	// Protocol spesific request parameters. For ex: DisableRedirects:true for Http requests
 	Custom map[string]interface{}
@@ -122,6 +133,26 @@ func (si *ScenarioItem) validate() error {
 	}
 	if si.ID == 0 {
 		return fmt.Errorf("each scenario item should have an unique ID")
+	}
+	if si.Sleep != "" {
+		sleep := strings.Split(si.Sleep, "-")
+
+		// Avoid invalid syntax like "-300-500"
+		if len(sleep) > 2 {
+			return fmt.Errorf("sleep expression is not valid: %s", si.Sleep)
+		}
+
+		// Validate string to int conversion
+		for _, s := range sleep {
+			dur, err := strconv.Atoi(s)
+			if err != nil {
+				return fmt.Errorf("sleep is not valid: %s", si.Sleep)
+			}
+
+			if dur > maxSleep {
+				return fmt.Errorf("maximum sleep limit exceeded. provided: %d ms, maximum: %d ms", dur, maxSleep)
+			}
+		}
 	}
 	return nil
 }

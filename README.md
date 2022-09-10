@@ -11,7 +11,7 @@
     <a href="https://goreportcard.com/report/github.com/ddosify/ddosify" target="_blank"><img src="https://goreportcard.com/badge/github.com/ddosify/ddosify?style=for-the-badge&logo=go" alt="go report" /></a>&nbsp;
     <a href="https://github.com/ddosify/ddosify/blob/master/LICENSE" target="_blank"><img src="https://img.shields.io/badge/LICENSE-AGPL--3.0-orange?style=for-the-badge&logo=none" alt="ddosify license" /></a>
     <a href="https://discord.gg/9KdnrSUZQg" target="_blank"><img src="https://img.shields.io/discord/898523141788287017?style=for-the-badge&logo=discord&label=DISCORD" alt="ddosify discord server" /></a>
-    <a href="https://hub.docker.com/r/ddosify/ddosify" target="_blank"><img src="https://img.shields.io/docker/v/ddosify/ddosify?style=for-the-badge&logo=docker&label=docker" alt="ddosify docker image" /></a>
+    <a href="https://hub.docker.com/r/ddosify/ddosify" target="_blank"><img src="https://img.shields.io/docker/v/ddosify/ddosify?style=for-the-badge&logo=docker&label=docker&sort=semver" alt="ddosify docker image" /></a>
 </p>
 
 
@@ -49,7 +49,7 @@ Run Ddosify open-source on Docker Desktop with Ddosify Docker extension. More: [
 brew install ddosify/tap/ddosify
 ```
 
-### apk, deb, rpm, Arch Linux packages
+### apk, deb, rpm, Arch Linux, FreeBSD packages
 
 - For arm architectures change `ddosify_amd64` to `ddosify_arm64` or `ddosify_armv6`.
 - Superuser privilege is required.
@@ -70,6 +70,9 @@ apk add --allow-untrusted ddosify_amd64.apk
 git clone https://aur.archlinux.org/ddosify.git
 cd ddosify
 makepkg -sri
+
+# For FreeBSD
+pkg install ddosify
 ```
 
 ### Windows exe from the [releases page](https://github.com/ddosify/ddosify/releases/latest)
@@ -95,7 +98,7 @@ makepkg -sri
 curl -sSfL https://raw.githubusercontent.com/ddosify/ddosify/master/scripts/install.sh | sh
 ```
 
-### Go install from source (macOS, Linux, Windows)
+### Go install from source (macOS, FreeBSD, Linux, Windows)
 
 ```bash
 go install -v go.ddosify.com/ddosify@latest

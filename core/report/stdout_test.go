@@ -20,7 +20,13 @@
 package report
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,17 +35,17 @@ import (
 
 //TODO:move aggregator.go related tests cases to aggregator_test.go
 
-func TestScenarioItemReport(t *testing.T) {
+func TestScenarioStepReport(t *testing.T) {
 	tests := []struct {
 		name              string
-		s                 ScenarioItemReport
+		s                 ScenarioStepResultSummary
 		successPercentage int
 		failedPercentage  int
 	}{
-		{"S:0-F:0", ScenarioItemReport{FailedCount: 0, SuccessCount: 0}, 0, 0},
-		{"S:0-F:1", ScenarioItemReport{FailedCount: 1, SuccessCount: 0}, 0, 100},
-		{"S:1-F:0", ScenarioItemReport{FailedCount: 0, SuccessCount: 1}, 100, 0},
-		{"S:3-F:9", ScenarioItemReport{FailedCount: 9, SuccessCount: 3}, 25, 75},
+		{"S:0-F:0", ScenarioStepResultSummary{FailedCount: 0, SuccessCount: 0}, 0, 0},
+		{"S:0-F:1", ScenarioStepResultSummary{FailedCount: 1, SuccessCount: 0}, 0, 100},
+		{"S:1-F:0", ScenarioStepResultSummary{FailedCount: 0, SuccessCount: 1}, 100, 0},
+		{"S:3-F:9", ScenarioStepResultSummary{FailedCount: 9, SuccessCount: 3}, 25, 75},
 	}
 
 	for _, test := range tests {
@@ -91,7 +97,8 @@ func TestResult(t *testing.T) {
 
 func TestInit(t *testing.T) {
 	s := &stdout{}
-	s.Init()
+	debug := false
+	s.Init(debug)
 
 	if s.doneChan == nil {
 		t.Errorf("DoneChan should be initialized")
@@ -103,25 +110,25 @@ func TestInit(t *testing.T) {
 }
 
 func TestStart(t *testing.T) {
-	responses := []*types.Response{
+	responses := []*types.ScenarioResult{
 		{
 			StartTime: time.Now(),
-			ResponseItems: []*types.ResponseItem{
+			StepResults: []*types.ScenarioStepResult{
 				{
-					ScenarioItemID: 1,
-					StatusCode:     200,
-					RequestTime:    time.Now().Add(1),
-					Duration:       time.Duration(10) * time.Second,
+					StepID:      1,
+					StatusCode:  200,
+					RequestTime: time.Now().Add(1),
+					Duration:    time.Duration(10) * time.Second,
 					Custom: map[string]interface{}{
 						"dnsDuration":  time.Duration(5) * time.Second,
 						"connDuration": time.Duration(5) * time.Second,
 					},
 				},
 				{
-					ScenarioItemID: 2,
-					RequestTime:    time.Now().Add(2),
-					Duration:       time.Duration(30) * time.Second,
-					Err:            types.RequestError{Type: types.ErrorConn, Reason: types.ReasonConnTimeout},
+					StepID:      2,
+					RequestTime: time.Now().Add(2),
+					Duration:    time.Duration(30) * time.Second,
+					Err:         types.RequestError{Type: types.ErrorConn, Reason: types.ReasonConnTimeout},
 					Custom: map[string]interface{}{
 						"dnsDuration":  time.Duration(10) * time.Second,
 						"connDuration": time.Duration(20) * time.Second,
@@ -131,22 +138,22 @@ func TestStart(t *testing.T) {
 		},
 		{
 			StartTime: time.Now().Add(10),
-			ResponseItems: []*types.ResponseItem{
+			StepResults: []*types.ScenarioStepResult{
 				{
-					ScenarioItemID: 1,
-					StatusCode:     200,
-					RequestTime:    time.Now().Add(11),
-					Duration:       time.Duration(30) * time.Second,
+					StepID:      1,
+					StatusCode:  200,
+					RequestTime: time.Now().Add(11),
+					Duration:    time.Duration(30) * time.Second,
 					Custom: map[string]interface{}{
 						"dnsDuration":  time.Duration(10) * time.Second,
 						"connDuration": time.Duration(20) * time.Second,
 					},
 				},
 				{
-					ScenarioItemID: 2,
-					StatusCode:     401,
-					RequestTime:    time.Now().Add(12),
-					Duration:       time.Duration(60) * time.Second,
+					StepID:      2,
+					StatusCode:  401,
+					RequestTime: time.Now().Add(12),
+					Duration:    time.Duration(60) * time.Second,
 					Custom: map[string]interface{}{
 						"dnsDuration":  time.Duration(20) * time.Second,
 						"connDuration": time.Duration(40) * time.Second,
@@ -156,7 +163,7 @@ func TestStart(t *testing.T) {
 		},
 	}
 
-	itemReport1 := &ScenarioItemReport{
+	itemReport1 := &ScenarioStepResultSummary{
 		StatusCodeDist: map[int]int{200: 2},
 		SuccessCount:   2,
 		FailedCount:    0,
@@ -167,7 +174,7 @@ func TestStart(t *testing.T) {
 		},
 		ErrorDist: map[string]int{},
 	}
-	itemReport2 := &ScenarioItemReport{
+	itemReport2 := &ScenarioStepResultSummary{
 		StatusCodeDist: map[int]int{401: 1},
 		SuccessCount:   1,
 		FailedCount:    1,
@@ -183,16 +190,17 @@ func TestStart(t *testing.T) {
 		SuccessCount: 1,
 		FailedCount:  1,
 		AvgDuration:  90,
-		ItemReports: map[int16]*ScenarioItemReport{
-			int16(1): itemReport1,
-			int16(2): itemReport2,
+		StepResults: map[uint16]*ScenarioStepResultSummary{
+			uint16(1): itemReport1,
+			uint16(2): itemReport2,
 		},
 	}
 
 	s := &stdout{}
-	s.Init()
+	debug := false
+	s.Init(debug)
 
-	responseChan := make(chan *types.Response, len(responses))
+	responseChan := make(chan *types.ScenarioResult, len(responses))
 	go s.Start(responseChan)
 
 	go func() {
@@ -216,4 +224,105 @@ func TestStart(t *testing.T) {
 	if !reflect.DeepEqual(*s.result, expectedResult) {
 		t.Errorf("2Expected %#v, Found %#v", expectedResult, *s.result)
 	}
+}
+
+func TestPrintJsonBody(t *testing.T) {
+	var byteArr []byte
+	buffer := bytes.NewBuffer(byteArr)
+
+	contentTypeJson := "application/json"
+	body := map[string]interface{}{"x": "y"}
+	printBody(buffer, contentTypeJson, body)
+
+	printedBody := buffer.Bytes()
+
+	if !json.Valid(printedBody) {
+		t.Errorf("Printed body is not valid json: %v", string(printedBody))
+	}
+}
+
+func TestPrintBodyAsString(t *testing.T) {
+	var byteArr []byte
+	buffer := bytes.NewBuffer(byteArr)
+
+	contentTypeAny := "any"
+	body := "argentina"
+	printBody(buffer, contentTypeAny, body)
+
+	printedBody := buffer.Bytes()
+
+	if string(printedBody) != body {
+		t.Errorf("Printed body does not match expected: %s, found: %v", body, string(printedBody))
+	}
+}
+
+func TestStdoutPrintsHeadlinesInDebugMode(t *testing.T) {
+	s := &stdout{}
+	s.Init(true)
+	testDoneChan := make(chan struct{}, 1)
+
+	// listen to output
+	realOut := out
+	r, w, _ := os.Pipe()
+	out = w
+	defer func() {
+		out = realOut
+	}()
+
+	inputChan := make(chan *types.ScenarioResult, 1)
+	inputChan <- &types.ScenarioResult{
+		StepResults: []*types.ScenarioStepResult{
+			{
+				StepID:        0,
+				StepName:      "",
+				RequestID:     [16]byte{},
+				StatusCode:    0,
+				RequestTime:   time.Time{},
+				Duration:      0,
+				ContentLength: 0,
+				Err:           types.RequestError{},
+				DebugInfo: map[string]interface{}{
+					"requestBody":     []byte{},
+					"requestHeaders":  http.Header{},
+					"url":             "",
+					"method":          "",
+					"responseBody":    []byte{},
+					"responseHeaders": http.Header{},
+				},
+				Custom: map[string]interface{}{},
+			},
+		},
+	}
+	close(inputChan)
+
+	go func() {
+		s.Start(inputChan)
+		w.Close()
+	}()
+
+	go func() {
+		// wait for print and debug
+		<-s.DoneChan()
+
+		printedOutput, err := ioutil.ReadAll(r)
+		t.Log(err)
+		t.Log(printedOutput)
+
+		outStr := string(printedOutput)
+		if !strings.Contains(outStr, "REQUEST") ||
+			!strings.Contains(outStr, "Request Headers:") ||
+			!strings.Contains(outStr, "Request Body:") ||
+			!strings.Contains(outStr, "RESPONSE") ||
+			!strings.Contains(outStr, "StatusCode:") ||
+			!strings.Contains(outStr, "Response Headers:") ||
+			!strings.Contains(outStr, "Response Body:") {
+
+			t.Errorf("One or multiple headlines are missing in stdout debug mode")
+		}
+
+		testDoneChan <- struct{}{}
+	}()
+
+	<-testDoneChan
+
 }

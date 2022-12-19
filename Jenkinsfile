@@ -1,7 +1,7 @@
 pipeline {
   agent {
     dockerfile {
-      filename 'Dockerfile.dev'
+      filename '.devcontainer/Dockerfile.dev'
     }
   }
   environment {
@@ -36,7 +36,7 @@ fi'''
     stage('Main Race Condition') {
       steps {
         lock('multi_branch_server') {
-          sh 'go run --race main.go -t https://proxytest.ddosifytech.com/ -d 1 -n 1500 -a ${PROXY_TEST_USERNAME}:${PROXY_TEST_PASSWORD} -p https'
+          sh 'go run --race main.go -t https://servdown.com/ -d 1 -n 1500 -p https'
         }
       }
     }

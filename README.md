@@ -5,7 +5,7 @@
 
 <p align="center">
     <a href="https://github.com/ddosify/ddosify/releases" target="_blank"><img src="https://img.shields.io/github/v/release/ddosify/ddosify?style=for-the-badge&logo=github&color=orange" alt="ddosify latest version" /></a>&nbsp;
-    <a href="https://github.com/ddosify/ddosify/actions/workflows/test.yml" target="_blank"><img src="https://img.shields.io/github/workflow/status/ddosify/ddosify/Test?style=for-the-badge&logo=github" alt="ddosify build result" /></a>&nbsp;
+    <a href="https://github.com/ddosify/ddosify/actions/workflows/test.yml" target="_blank"><img src="https://img.shields.io/github/actions/workflow/status/ddosify/ddosify/test.yml?branch=master&style=for-the-badge&logo=github" alt="ddosify build result" /></a>&nbsp;
     <a href="https://pkg.go.dev/go.ddosify.com/ddosify" target="_blank"><img src="https://img.shields.io/github/go-mod/go-version/ddosify/ddosify?style=for-the-badge&logo=go" alt="golang version" /></a>&nbsp;
     <a href="https://app.codecov.io/gh/ddosify/ddosify" target="_blank"><img src="https://img.shields.io/codecov/c/github/ddosify/ddosify?style=for-the-badge&logo=codecov" alt="go coverage" /></a>&nbsp;
     <a href="https://goreportcard.com/report/github.com/ddosify/ddosify" target="_blank"><img src="https://goreportcard.com/badge/github.com/ddosify/ddosify?style=for-the-badge&logo=go" alt="go report" /></a>&nbsp;
@@ -100,6 +100,8 @@ curl -sSfL https://raw.githubusercontent.com/ddosify/ddosify/master/scripts/inst
 
 ### Go install from source (macOS, FreeBSD, Linux, Windows)
 
+*Minimum supported Go version is 1.18*
+
 ```bash
 go install -v go.ddosify.com/ddosify@latest
 ```
@@ -146,7 +148,7 @@ ddosify [FLAG]
 | Flag | Description                  | Type     | Default | Required?  |
 | ------ | -------------------------------------------------------- | ------   | ------- | ---------  |
 | `-t`   | Target website URL. Example: https://ddosify.com         | `string` | - | Yes        |
-| `-n`   | Total request count                                      | `int`    | `100`   | No         |
+| `-n`   | Total iteration count                                      | `int`    | `100`   | No         |
 | `-d`   | Test duration in seconds.                                | `int`    | `10`    | No         |
 | `-p`   | Protocol of the request. Supported protocols are *HTTP, HTTPS*. HTTP/2 support is only available by using a config file as described. More protocols will be added.                                | `string`    | `HTTPS`    | No         |
 | `-m`   | Request method. Available methods for HTTP(s) are *GET, POST, PUT, DELETE, HEAD, PATCH, OPTIONS* | `string`    | `GET`    | No  |
@@ -161,6 +163,7 @@ ddosify [FLAG]
 | <span style="white-space: nowrap;">`--version`</span>    | Prints version, git commit, built date (utc), go information and quit | -    | -    | No |
 | <span style="white-space: nowrap;">`--cert_path`</span>    | A path to a certificate file (usually called 'cert.pem') | -    | -    | No |
 | <span style="white-space: nowrap;">`--cert_key_path`</span>    | A path to a certificate key file (usually called 'key.pem') | -    | -    | No |
+| <span style="white-space: nowrap;">`--debug`</span>    | Iterates the scenario once and prints curl-like verbose result. Note that this flag overrides json config.  |  `bool`     |  `false`     | No |
 
 ### Load Types
 
@@ -174,7 +177,7 @@ Result:
 
 ![linear load](https://raw.githubusercontent.com/ddosify/ddosify/master/assets/linear.gif)
 
-*Note:* If the request count is too low for the given duration, the test might be finished earlier than you expect.
+*Note:* If the iteration count is too low for the given duration, the test might be finished earlier than you expect.
 
 #### Incremental
 
@@ -217,7 +220,7 @@ Usage;
 
 There is an example config file at [config_examples/config.json](/config_examples/config.json). This file contains all of the parameters you can use. Details of each parameter;
 
-- `request_count` *optional*
+- `iteration_count` *optional*
 
     This is the equivalent of the `-n` flag. The difference is that if you have multiple steps in your scenario, this value represents the iteration count of the steps.
 
@@ -231,7 +234,7 @@ There is an example config file at [config_examples/config.json](/config_example
 
 - `manual_load` *optional*
 
-    If you are looking for creating your own custom load type, you can use this feature. The example below says that Ddosify will run the scenario 5 times, 10 times, and 20 times, respectively along with the provided durations. `request_count` and `duration` will be auto-filled by Ddosify according to `manual_load` configuration. In this example, `request_count` will be 35 and the `duration` will be 18 seconds.
+    If you are looking for creating your own custom load type, you can use this feature. The example below says that Ddosify will run the scenario 5 times, 10 times, and 20 times, respectively along with the provided durations. `iteration_count` and `duration` will be auto-filled by Ddosify according to `manual_load` configuration. In this example, `iteration_count` will be 35 and the `duration` will be 18 seconds.
     Also `manual_load` overrides `load_type` if you provide both of them. As a result, you don't need to provide these 3 parameters when using `manual_load`.
     ```json
     "manual_load": [
@@ -458,7 +461,7 @@ ddosify -config ddosify_config_dynamic.json
 ```json
 // ddosify_config_dynamic.json
 {
-    "request_count": 100,
+    "iteration_count": 100,
     "load_type": "linear",
     "duration": 10,
     "steps": [

@@ -40,10 +40,10 @@ type MockRequester struct {
 	FailInit    bool
 	FailInitMsg string
 
-	ReturnSend *types.ResponseItem
+	ReturnSend *types.ScenarioStepResult
 }
 
-func (m *MockRequester) Init(ctx context.Context, s types.ScenarioItem, proxyAddr *url.URL) (err error) {
+func (m *MockRequester) Init(ctx context.Context, s types.ScenarioStep, proxyAddr *url.URL, debug bool) (err error) {
 	m.InitCalled = true
 	if m.FailInit {
 		return fmt.Errorf(m.FailInitMsg)
@@ -51,7 +51,7 @@ func (m *MockRequester) Init(ctx context.Context, s types.ScenarioItem, proxyAdd
 	return
 }
 
-func (m *MockRequester) Send() (res *types.ResponseItem) {
+func (m *MockRequester) Send() (res *types.ScenarioStepResult) {
 	m.SendCalled = true
 	return m.ReturnSend
 }
@@ -102,11 +102,11 @@ func compareScenarioServiceClients(
 				return fmt.Errorf("[requester] Expected %#v, Found %#v", expectedVal, val)
 			}
 
-			if reflect.TypeOf(expectedVal[i].sleep) != reflect.TypeOf(val[i].sleep) {
+			if reflect.TypeOf(expectedVal[i].sleeper) != reflect.TypeOf(val[i].sleeper) {
 				return fmt.Errorf("[sleep] Expected %#v, Found %#v", expectedVal, val)
 			}
 
-			if !reflect.DeepEqual(expectedVal[i].sleep, val[i].sleep) {
+			if !reflect.DeepEqual(expectedVal[i].sleeper, val[i].sleeper) {
 				return fmt.Errorf("[sleep] Expected %#v, Found %#v", expectedVal, val)
 			}
 		}
@@ -119,7 +119,7 @@ func TestInitService(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: types.DefaultProtocol,
@@ -154,12 +154,12 @@ func TestInitService(t *testing.T) {
 			{
 				scenarioItemID: 1,
 				requester:      &requester.HttpRequester{},
-				sleep:          &RangeSleep{min: 300, max: 500},
+				sleeper:        &RangeSleep{min: 300, max: 500},
 			},
 			{
 				scenarioItemID: 2,
 				requester:      &requester.HttpRequester{},
-				sleep:          &DurationSleep{duration: 1000},
+				sleeper:        &DurationSleep{duration: 1000},
 			},
 			{
 				scenarioItemID: 3,
@@ -170,12 +170,12 @@ func TestInitService(t *testing.T) {
 			{
 				scenarioItemID: 1,
 				requester:      &requester.HttpRequester{},
-				sleep:          &RangeSleep{min: 300, max: 500},
+				sleeper:        &RangeSleep{min: 300, max: 500},
 			},
 			{
 				scenarioItemID: 2,
 				requester:      &requester.HttpRequester{},
-				sleep:          &DurationSleep{duration: 1000},
+				sleeper:        &DurationSleep{duration: 1000},
 			},
 			{
 				scenarioItemID: 3,
@@ -186,7 +186,7 @@ func TestInitService(t *testing.T) {
 
 	// Act
 	service := ScenarioService{}
-	err := service.Init(ctx, scenario, proxies)
+	err := service.Init(ctx, scenario, proxies, false)
 
 	// Assert
 	if err != nil {
@@ -203,7 +203,7 @@ func TestInitServiceFail(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: "invalid_protocol",
@@ -220,7 +220,7 @@ func TestInitServiceFail(t *testing.T) {
 
 	// Act
 	service := ScenarioService{}
-	err := service.Init(ctx, scenario, proxies)
+	err := service.Init(ctx, scenario, proxies, false)
 
 	// Assert
 	if err == nil {
@@ -233,9 +233,16 @@ func TestDo(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
+				Protocol: types.DefaultProtocol,
+				Method:   types.DefaultMethod,
+				URL:      "test.com",
+				Timeout:  types.DefaultDuration,
+			},
+			{
+				ID:       2,
 				Protocol: types.DefaultProtocol,
 				Method:   types.DefaultMethod,
 				URL:      "test.com",
@@ -250,12 +257,12 @@ func TestDo(t *testing.T) {
 	requesters := []scenarioItemRequester{
 		{
 			scenarioItemID: 1,
-			sleep:          mockSleep,
-			requester:      &MockRequester{ReturnSend: &types.ResponseItem{ScenarioItemID: 1}},
+			sleeper:        mockSleep,
+			requester:      &MockRequester{ReturnSend: &types.ScenarioStepResult{StepID: 1}},
 		},
 		{
 			scenarioItemID: 2,
-			requester:      &MockRequester{ReturnSend: &types.ResponseItem{ScenarioItemID: 2}},
+			requester:      &MockRequester{ReturnSend: &types.ScenarioStepResult{StepID: 2}},
 		},
 	}
 	service := ScenarioService{
@@ -266,10 +273,10 @@ func TestDo(t *testing.T) {
 		ctx:      ctx,
 	}
 
-	expectedResponse := types.Response{
+	expectedResponse := types.ScenarioResult{
 		ProxyAddr: p1,
-		ResponseItems: []*types.ResponseItem{
-			{ScenarioItemID: 1}, {ScenarioItemID: 2},
+		StepResults: []*types.ScenarioStepResult{
+			{StepID: 1}, {StepID: 2},
 		},
 	}
 	// Act
@@ -282,8 +289,8 @@ func TestDo(t *testing.T) {
 	if response.ProxyAddr != expectedResponse.ProxyAddr {
 		t.Fatalf("[ProxyAddr] Expected %v, Found: %v", expectedResponse.ProxyAddr, response.ProxyAddr)
 	}
-	if !reflect.DeepEqual(expectedResponse.ResponseItems, response.ResponseItems) {
-		t.Fatalf("[ResponseItem] Expected %#v, Found: %#v", expectedResponse.ResponseItems, response.ResponseItems)
+	if !reflect.DeepEqual(expectedResponse.StepResults, response.StepResults) {
+		t.Fatalf("[ResponseItem] Expected %#v, Found: %#v", expectedResponse.StepResults, response.StepResults)
 	}
 	if !mockSleep.SleepCalled {
 		t.Fatalf("[Sleep] Sleep should be called")
@@ -298,7 +305,7 @@ func TestDoErrorOnSend(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: "invalid_protocol",
@@ -314,19 +321,19 @@ func TestDoErrorOnSend(t *testing.T) {
 	requestersProxyError := []scenarioItemRequester{
 		{
 			scenarioItemID: 1,
-			requester:      &MockRequester{ReturnSend: &types.ResponseItem{Err: types.RequestError{Type: types.ErrorProxy}}},
+			requester:      &MockRequester{ReturnSend: &types.ScenarioStepResult{Err: types.RequestError{Type: types.ErrorProxy}}},
 		},
 	}
 	requestersIntentedError := []scenarioItemRequester{
 		{
 			scenarioItemID: 1,
-			requester:      &MockRequester{ReturnSend: &types.ResponseItem{Err: types.RequestError{Type: types.ErrorIntented}}},
+			requester:      &MockRequester{ReturnSend: &types.ScenarioStepResult{Err: types.RequestError{Type: types.ErrorIntented}}},
 		},
 	}
 	requestersConnError := []scenarioItemRequester{
 		{
 			scenarioItemID: 1,
-			requester:      &MockRequester{ReturnSend: &types.ResponseItem{Err: types.RequestError{Type: types.ErrorConn}}},
+			requester:      &MockRequester{ReturnSend: &types.ScenarioStepResult{Err: types.RequestError{Type: types.ErrorConn}}},
 		},
 	}
 
@@ -367,10 +374,10 @@ func TestDoErrorOnSend(t *testing.T) {
 					t.Fatalf("Errored: %v", err)
 				}
 			}
-			if test.responseItemsShouldEmpty && len(res.ResponseItems) > 0 {
-				t.Fatalf("ResponseItem should be empty: %v", res.ResponseItems)
+			if test.responseItemsShouldEmpty && len(res.StepResults) > 0 {
+				t.Fatalf("ResponseItem should be empty: %v", res.StepResults)
 			}
-			if !test.responseItemsShouldEmpty && len(res.ResponseItems) == 0 {
+			if !test.responseItemsShouldEmpty && len(res.StepResults) == 0 {
 				t.Fatal("ResponseItem shouldn't be empty")
 			}
 
@@ -383,7 +390,7 @@ func TestDoErrorOnNewRequester(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: "invalid_protocol",
@@ -419,7 +426,7 @@ func TestDone(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: types.DefaultProtocol,
@@ -433,10 +440,10 @@ func TestDone(t *testing.T) {
 	p2, _ := url.Parse("http://proxy_server.com:8080")
 	ctx := context.TODO()
 
-	requester1 := &MockRequester{ReturnSend: &types.ResponseItem{ScenarioItemID: 1}}
-	requester2 := &MockRequester{ReturnSend: &types.ResponseItem{ScenarioItemID: 2}}
-	requester3 := &MockRequester{ReturnSend: &types.ResponseItem{ScenarioItemID: 1}}
-	requester4 := &MockRequester{ReturnSend: &types.ResponseItem{ScenarioItemID: 2}}
+	requester1 := &MockRequester{ReturnSend: &types.ScenarioStepResult{StepID: 1}}
+	requester2 := &MockRequester{ReturnSend: &types.ScenarioStepResult{StepID: 2}}
+	requester3 := &MockRequester{ReturnSend: &types.ScenarioStepResult{StepID: 1}}
+	requester4 := &MockRequester{ReturnSend: &types.ScenarioStepResult{StepID: 2}}
 	service := ScenarioService{
 		clients: map[*url.URL][]scenarioItemRequester{
 			p1: {
@@ -487,7 +494,7 @@ func TestGetOrCreateRequesters(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: types.DefaultProtocol,
@@ -502,7 +509,7 @@ func TestGetOrCreateRequesters(t *testing.T) {
 	ctx := context.TODO()
 
 	service := ScenarioService{}
-	service.Init(ctx, scenario, proxies)
+	service.Init(ctx, scenario, proxies, false)
 
 	expectedRequesters := []scenarioItemRequester{{scenarioItemID: 1, requester: &requester.HttpRequester{}}}
 	expectedClients := map[*url.URL][]scenarioItemRequester{
@@ -533,7 +540,7 @@ func TestGetOrCreateRequestersNewProxy(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: types.DefaultProtocol,
@@ -548,7 +555,7 @@ func TestGetOrCreateRequestersNewProxy(t *testing.T) {
 	ctx := context.TODO()
 
 	service := ScenarioService{}
-	service.Init(ctx, scenario, proxies)
+	service.Init(ctx, scenario, proxies, false)
 
 	expectedRequesters := []scenarioItemRequester{{scenarioItemID: 1, requester: &requester.HttpRequester{}}}
 
@@ -582,7 +589,7 @@ func TestGetOrCreateRequestersFailed(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: "invalid_protocol",
@@ -597,7 +604,7 @@ func TestGetOrCreateRequestersFailed(t *testing.T) {
 	ctx := context.TODO()
 
 	service := ScenarioService{}
-	service.Init(ctx, scenario, proxies)
+	service.Init(ctx, scenario, proxies, false)
 
 	p, _ := url.Parse("http://proxy_server2.com:8080")
 
@@ -616,7 +623,7 @@ func TestCreateRequestersErrorOnNewRequester(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: "invalid_protocol",
@@ -649,7 +656,7 @@ func TestCreateRequestersErrorOnRequesterInit(t *testing.T) {
 
 	// Arrange
 	scenario := types.Scenario{
-		Scenario: []types.ScenarioItem{
+		Steps: []types.ScenarioStep{
 			{
 				ID:       1,
 				Protocol: types.DefaultProtocol,
@@ -677,7 +684,7 @@ func TestCreateRequestersErrorOnRequesterInit(t *testing.T) {
 	}
 }
 
-func TestNewSleep(t *testing.T) {
+func TestnewSleeper(t *testing.T) {
 	t.Parallel()
 
 	sleepRange := "300-500"
@@ -693,17 +700,17 @@ func TestNewSleep(t *testing.T) {
 	}
 
 	// "range" sleep strategy test
-	sleep := newSleep(sleepRange)
+	sleep := newSleeper(sleepRange)
 	if !reflect.DeepEqual(sleep, expectedSleepRange) {
 		t.Errorf("Expected %v, Found: %v", expectedSleepRange, sleep)
 	}
-	sleep = newSleep(sleepRangeReverse)
+	sleep = newSleeper(sleepRangeReverse)
 	if !reflect.DeepEqual(sleep, expectedSleepRange) {
 		t.Errorf("Expected %v, Found: %v", expectedSleepRange, sleep)
 	}
 
 	// "duration" sleep strategy test
-	sleep = newSleep(sleepDuration)
+	sleep = newSleeper(sleepDuration)
 	if !reflect.DeepEqual(sleep, exptectedSleepDuration) {
 		t.Errorf("Expected %v, Found: %v", exptectedSleepDuration, sleep)
 	}

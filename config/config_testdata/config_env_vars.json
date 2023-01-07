@@ -1,5 +1,4 @@
 {
-    "debug": true,
     "iteration_count": 1555,
     "load_type": "waved",
     "duration": 21,
@@ -7,19 +6,23 @@
         {
             "id": 1,
             "name": "Example Name 1",
-            "url": "https://app.servdown.com/accounts/login/?next=/",
+            "url": "{{TARGET_URL}}/accounts/login/?next=/",
             "method": "GET",
             "payload": "payload str",
             "timeout": 3,
             "sleep": "1000",
             "others": {
                 "keep-alive": true
+            },
+            "captureEnv": {
+                "ENV_VAR1" :{"jsonPath":""},
+                "ENV_VAR2" :{"xPath":""}
             }
         },
         {
             "id": 2,
             "name": "Example Name 2",
-            "url": "http://test.com",
+            "url": "http://test.com/{{ENV_VAR1}}",
             "method": "PUT",
             "headers": {
                 "ContenType": "application/xml",
@@ -30,5 +33,8 @@
         }
     ],
     "output": "stdout",
-    "proxy": "http://proxy_host:80"
+    "proxy": "http://proxy_host:80",
+    "env":{
+        "TARGET_URL" : "https://app.servdown.com"
+    }
 }

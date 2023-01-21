@@ -57,6 +57,7 @@ type stdout struct {
 var white = color.New(color.FgHiWhite).SprintFunc()
 var blue = color.New(color.FgHiBlue).SprintFunc()
 var green = color.New(color.FgHiGreen).SprintFunc()
+var yellow = color.New(color.FgHiYellow).SprintFunc()
 var red = color.New(color.FgHiRed).SprintFunc()
 var realTimePrintInterval = time.Duration(1500) * time.Millisecond
 
@@ -170,6 +171,30 @@ func (s *stdout) printInDebugMode(input chan *types.ScenarioResult) {
 					fmt.Fprintf(w, "\t%s:\t%-5s \n", fmt.Sprint(eKey), fmt.Sprint(eVal))
 				}
 			}
+			fmt.Fprintf(w, "\n")
+			fmt.Fprintf(w, "%s\n", blue(fmt.Sprintf("- Test Data")))
+
+			for eKey, eVal := range verboseInfo.TestData {
+				switch eVal.(type) {
+				case map[string]interface{}:
+					valPretty, _ := json.Marshal(eVal)
+					fmt.Fprintf(w, "\t%s:\t%-5s \n", fmt.Sprint(eKey), valPretty)
+				case []int:
+					valPretty, _ := json.Marshal(eVal)
+					fmt.Fprintf(w, "\t%s:\t%-5s \n", fmt.Sprint(eKey), valPretty)
+				case []string:
+					valPretty, _ := json.Marshal(eVal)
+					fmt.Fprintf(w, "\t%s:\t%-5s \n", fmt.Sprint(eKey), valPretty)
+				case []float64:
+					valPretty, _ := json.Marshal(eVal)
+					fmt.Fprintf(w, "\t%s:\t%-5s \n", fmt.Sprint(eKey), valPretty)
+				case []bool:
+					valPretty, _ := json.Marshal(eVal)
+					fmt.Fprintf(w, "\t%s:\t%-5s \n", fmt.Sprint(eKey), valPretty)
+				default:
+					fmt.Fprintf(w, "\t%s:\t%-5s \n", fmt.Sprint(eKey), fmt.Sprint(eVal))
+				}
+			}
 
 			if verboseInfo.Error != "" && isVerboseInfoRequestEmpty(verboseInfo.Request) {
 				fmt.Fprintf(w, "%s Error: \t%-5s \n", emoji.SosButton, verboseInfo.Error)
@@ -194,7 +219,7 @@ func (s *stdout) printInDebugMode(input chan *types.ScenarioResult) {
 
 			if verboseInfo.Error != "" { // failed captures and error
 				if len(verboseInfo.FailedCaptures) > 0 {
-					fmt.Fprintf(w, "%s\n", blue(fmt.Sprintf("- Failed Captures")))
+					fmt.Fprintf(w, "%s\n", yellow(fmt.Sprintf("- Failed Captures")))
 					for wKey, wVal := range verboseInfo.FailedCaptures {
 						fmt.Fprintf(w, "\t\t%s: \t%s \n", wKey, wVal)
 					}
@@ -214,7 +239,7 @@ func (s *stdout) printInDebugMode(input chan *types.ScenarioResult) {
 				fmt.Fprintf(w, "\n")
 
 				if len(verboseInfo.FailedCaptures) > 0 {
-					fmt.Fprintf(w, "%s\n", blue(fmt.Sprintf("- Failed Captures")))
+					fmt.Fprintf(w, "%s\n", yellow(fmt.Sprintf("- Failed Captures")))
 					for wKey, wVal := range verboseInfo.FailedCaptures {
 						fmt.Fprintf(w, "\t\t%s: \t%s \n", wKey, wVal)
 					}

@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"go.ddosify.com/ddosify/core/scenario/requester"
+	"go.ddosify.com/ddosify/core/scenario/scripting/injection"
 	"go.ddosify.com/ddosify/core/types"
 )
 
@@ -45,7 +46,7 @@ type MockRequester struct {
 	ReturnSend *types.ScenarioStepResult
 }
 
-func (m *MockRequester) Init(ctx context.Context, s types.ScenarioStep, proxyAddr *url.URL, debug bool) (err error) {
+func (m *MockRequester) Init(ctx context.Context, s types.ScenarioStep, proxyAddr *url.URL, debug bool, ei *injection.EnvironmentInjector) (err error) {
 	m.InitCalled = true
 	if m.FailInit {
 		return fmt.Errorf(m.FailInitMsg)
@@ -663,7 +664,9 @@ func TestInjectDynamicVars(t *testing.T) {
 
 	beforeLen := len(envs)
 
-	injectDynamicVars(envs)
+	vi := &injection.EnvironmentInjector{}
+	vi.Init()
+	injectDynamicVars(vi, envs)
 
 	afterLen := len(envs)
 

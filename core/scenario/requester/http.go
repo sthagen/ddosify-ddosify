@@ -58,6 +58,8 @@ type HttpRequester struct {
 	debug                bool
 	dynamicRgx           *regexp.Regexp
 	envRgx               *regexp.Regexp
+
+	constantBodyReader *bytes.Reader
 }
 
 // Init creates a client with the given scenarioItem. HttpRequester uses the same http.Client for all requests
@@ -106,6 +108,10 @@ func (h *HttpRequester) Init(ctx context.Context, s types.ScenarioStep, proxyAdd
 
 	if h.envRgx.MatchString(h.packet.Payload) {
 		h.containsEnvVar["body"] = true
+	}
+
+	if !h.containsDynamicField["body"] && !h.containsEnvVar["body"] {
+		h.constantBodyReader = bytes.NewReader([]byte(h.packet.Payload))
 	}
 
 	// url
@@ -225,8 +231,13 @@ func (h *HttpRequester) Send(client *http.Client, envs map[string]interface{}) (
 		return res
 	}
 
-	io.Copy(&copiedReqBody, httpReq.Body)
-	httpReq.Body = io.NopCloser(bytes.NewReader(copiedReqBody.Bytes()))
+	if h.debug {
+		// copy req body for debug
+		if httpReq.Body != nil {
+			io.Copy(&copiedReqBody, httpReq.Body)
+			httpReq.Body = io.NopCloser(bytes.NewReader(copiedReqBody.Bytes()))
+		}
+	}
 
 	// Action
 	httpRes, err := client.Do(httpReq)
@@ -357,20 +368,25 @@ func (h *HttpRequester) prepareReq(envs map[string]interface{}, trace *httptrace
 	re := regexp.MustCompile(regex.DynamicVariableRegex)
 	httpReq := h.request.Clone(h.ctx)
 	var err error
-	// body
-	body := h.packet.Payload
-	if h.containsDynamicField["body"] {
-		body, _ = h.ei.InjectDynamic(body)
-	}
-	if h.containsEnvVar["body"] {
-		body, err = h.ei.InjectEnv(body, envs)
-		if err != nil {
-			return nil, err
-		}
-	}
 
-	httpReq.Body = io.NopCloser(bytes.NewBufferString(body))
-	httpReq.ContentLength = int64(len(body))
+	if h.constantBodyReader != nil {
+		sectionReader := io.NewSectionReader(h.constantBodyReader, 0, int64(len(h.packet.Payload)))
+		httpReq.Body = &SectionReadCloser{sectionReader}
+		httpReq.ContentLength = h.request.ContentLength
+	} else {
+		body := h.packet.Payload
+		if h.containsDynamicField["body"] {
+			body, _ = h.ei.InjectDynamic(body)
+		}
+		if h.containsEnvVar["body"] {
+			body, err = h.ei.InjectEnv(body, envs)
+			if err != nil {
+				return nil, err
+			}
+		}
+		httpReq.Body = io.NopCloser(bytes.NewBufferString(body))
+		httpReq.ContentLength = int64(len(body))
+	}
 
 	// url
 	hostURL := h.packet.URL
@@ -875,4 +891,13 @@ func (d *duration) totalDuration() time.Duration {
 	defer d.mu.Unlock()
 
 	return d.dnsDur + d.connDur + d.tlsDur + d.reqDur + d.serverProcessDur + d.resDur
+}
+
+type SectionReadCloser struct {
+	*io.SectionReader
+}
+
+func (s *SectionReadCloser) Close() error {
+	// No resources to close in SectionReader, so it's a no-op.
+	return nil
 }

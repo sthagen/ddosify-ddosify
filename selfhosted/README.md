@@ -41,7 +41,7 @@ This README provides instructions for installing and an overview of the system r
 - **Memory**: 8 GB RAM or more
 - **Storage**: At least 5 GB of available hard drive space (preferably SSD for faster load times)
 
-## ⚡️ Quick Start (Recommended)
+## ⚡️ Quick Start (docker compose)
 
 You can quickly deploy Ddosify Self Hosted by running the following command. This script clones the Ddosify repository to your `$HOME/.ddosify` directory, and deploys the services using Docker Compose. Please check the [install.sh](./install.sh) file to see what it does. You can also run the commands manually by following the [Manual Installation](#-manual-installation) section.
 
@@ -184,12 +184,13 @@ To monitor your Kubernetes Cluster, you need to run the [Ddosify eBPF Agent (Ala
 |----------------------|---------------------------------------------------------------------------------------------------|
 | `Hammer`               | The engine responsible for executing load tests. You can add multiple hammers to scale your load testing capabilities.                                                  |
 | `Hammer Manager`       | Manages the engines (Hammers) involved in load testing.                                           |
-| `Backend`             | Handles load test management and stores results.                                                  |
+| `Backend`              | Handles Kubernetes Monitoring and Performance Testing                                                   |
+| `Alaz Backend`         | Handles eBPF Agent (Alaz) Metrics, Traces and Logs                                                  |
 | `InfluxDB`             | Database that stores metrics collected during testing.                                            |
 | `Postgres`             | Database that preserves load test results.                                                        |
 | `RabbitMQ`             | Message broker enabling communication between Hammer Manager and Hammers.                         |
 | `SeaweedFS Object Storage` | Object storage for multipart files and test data (CSV) used in load tests.                        |
-| `Nginx`                | Reverse proxy for backend and frontend services.                                                  |
+| `Nginx`                | Reverse proxy for backend, alaz-backend and frontend services.                                                  |
 | `Prometheus`          | Collects the Kubernetes Monitoring metrics from the Backend service.                                          |
 
 ## Telemetry Data

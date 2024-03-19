@@ -12,6 +12,7 @@
     <a href="https://github.com/ddosify/ddosify/blob/master/LICENSE" target="_blank"><img src="https://img.shields.io/badge/LICENSE-AGPL--3.0-orange?style=for-the-badge&logo=none" alt="ddosify license" /></a>
     <a href="https://discord.gg/9KdnrSUZQg" target="_blank"><img src="https://img.shields.io/discord/898523141788287017?style=for-the-badge&logo=discord&label=DISCORD" alt="ddosify discord server" /></a>
     <a href="https://hub.docker.com/r/ddosify/ddosify" target="_blank"><img src="https://img.shields.io/docker/v/ddosify/ddosify?style=for-the-badge&logo=docker&label=docker&sort=semver" alt="ddosify docker image" /></a>
+    <a href="https://landscape.cncf.io/?item=observability-and-analysis--observability--ddosify" target="_blank"><img src="https://img.shields.io/badge/CNCF%20Landscape-5699C6?style=for-the-badge&logo=cncf&label=cncf" alt="cncf landscape" /></a>
 </p>
 
 <p align="center">
@@ -28,7 +29,7 @@
 
 ## What is Ddosify?
 
-Ddosify is an [open-source](https://github.com/ddosify/ddosify) **Kubernetes Monitoring** and **Performance Testing** platform.
+Ddosify is an [open-source](https://github.com/ddosify/ddosify), eBPF-based **Kubernetes Monitoring** and **Performance Testing** platform.
 
 
 ### 🔎 Kubernetes Monitoring
@@ -36,8 +37,10 @@ Ddosify is an [open-source](https://github.com/ddosify/ddosify) **Kubernetes Mon
 - **Automatic Service Map Creation:** Ddosify automatically creates a **service map** of your cluster without code instrumentation or sidecars. So you can easily find the bottlenecks in your system.
 - **Performance Insights:** It helps you spot issues like services taking too long to respond or slow SQL queries.
 - **Real-Time Metrics:** The platform tracks and displays live data on your cluster instances CPU, memory, disk, and network usage.
-- **Ease of Use:** You don't need to change any code, restart services, or add extra components (like sidecars) to get these insights, thanks to the eBPF technology.
+- **Ease of Use:** You don't need to change any code, restart services, or add extra components (like sidecars) to get these insights, thanks to the [eBPF based agent (Alaz)](https://github.com/ddosify/alaz).
 - **Alerts for Anomalies:** If something unusual, like a sudden increase in CPU usage, happens in your Kubernetes (K8s) cluster, Ddosify immediately sends alerts to your Slack.
+- **Seamless Integration with Performance Testing:** Performance testing is natively integrated with Kubernetes monitoring for a unified experience.
+- **Distributed Tracing:** Ddosify automatically collects traces from your Kubernetes cluster and generates context propagation without changing a single line of code.
 
 <p align="center">
 <img src="assets/ddosify_metrics.png" alt="Ddosify Kubernetes Monitoring Metrics" />
@@ -92,12 +95,16 @@ Check out our [Github Page](https://github.com/ddosify/ddosify/tree/master/selfh
 
 #### Quick Start
 
+(1) Deploy using Docker Compose:
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/ddosify/ddosify/master/selfhosted/install.sh | bash
 ```
 <p align="center">
     <a href="https://aws.amazon.com/marketplace/pp/prodview-mwvnujtgjedjy" target="_blank"><img src="https://img.shields.io/badge/Available_on_aws_marketplace-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" height="40" alt="Available on aws marketplace" /></a>&nbsp;
 </p>
+
+(2) You can deploy Ddosify Self Hosted on Kubernetes using the [Helm chart](https://github.com/ddosify/ddosify-helm-charts).
 
 ### ☁️ Ddosify Cloud
 
@@ -149,6 +156,11 @@ You will see the incoming requests to your K8s cluster, service-to-service traff
 <p align="left">
 <img src="assets/ddosify_load_test_monitoring.png" alt="Ddosify - Find Bottlenecks Feature" />
 </p>
+
+#### ✅ Distributed Tracing
+
+Ddosify automatically collects traces from your Kubernetes cluster and generates context propagation without changing a single line of code. <a href="https://docs.ddosify.com/ddosify/kubernetes-monitoring/distributed-tracing" target="_blank">More →</a>
+
 
 ## Performance Testing Features
 #### ✅  Parametrization
